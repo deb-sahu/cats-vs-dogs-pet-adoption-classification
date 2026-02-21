@@ -1,0 +1,86 @@
+version: "3.8"
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: catdog-classifier-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./models:/app/models:ro
+    environment:
+      - MODEL_PATH=/app/models/model.pt
+      - PYTHONUNBUFFERED=1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - catdog-network
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.10.2
+    container_name: catdog-mlflow
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlruns:/mlflow/mlruns
+      - ./mlartifacts:/mlflow/mlartifacts
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri sqlite:///mlflow/mlruns/mlflow.db
+      --default-artifact-root /mlflow/mlartifacts
+    restart: unless-stopped
+    networks:
+      - catdog-network
+
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: catdog-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./k8s/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+    restart: unless-stopped
+    networks:
+      - catdog-network
+    depends_on:
+      - api
+
+  grafana:
+    image: grafana/grafana:10.2.3
+    container_name: catdog-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./k8s/monitoring/grafana-provisioning:/etc/grafana/provisioning:ro
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_USERS_ALLOW_SIGN_UP=false
+    restart: unless-stopped
+    networks:
+      - catdog-network
+    depends_on:
+      - prometheus
+
+networks:
+  catdog-network:
+    driver: bridge
+
+volumes:
+  prometheus_data:
+  grafana_data:

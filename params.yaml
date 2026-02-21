@@ -1,0 +1,17 @@
+# DVC Parameters for the ML pipeline
+
+train:
+  n_samples: 100
+  epochs: 10
+  learning_rate: 0.001
+  batch_size: 32
+  target_size: [224, 224]
+  
+model:
+  type: "simple_cnn"
+  dropout: 0.5
+  
+data:
+  train_ratio: 0.8
+  val_ratio: 0.1
+  test_ratio: 0.1

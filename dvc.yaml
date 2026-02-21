@@ -1,0 +1,41 @@
+stages:
+  download:
+    cmd: python -m src.data.download --sample --n-samples 100
+    deps:
+      - src/data/download.py
+    outs:
+      - data/processed:
+          persist: true
+    params:
+      - train.n_samples
+
+  preprocess:
+    cmd: python -m src.data.preprocess
+    deps:
+      - src/data/preprocess.py
+      - data/processed
+    outs:
+      - data/processed_stats.json:
+          persist: true
+
+  train:
+    cmd: python scripts/train.py --epochs ${train.epochs} --lr ${train.learning_rate} --batch-size ${train.batch_size}
+    deps:
+      - src/models/train.py
+      - src/models/cnn.py
+      - data/processed
+    params:
+      - train.epochs
+      - train.learning_rate
+      - train.batch_size
+    outs:
+      - models/model.pt:
+          persist: true
+    metrics:
+      - artifacts/metrics.json:
+          cache: false
+    plots:
+      - artifacts/confusion_matrix.png:
+          cache: false
+      - artifacts/training_curves.png:
+          cache: false

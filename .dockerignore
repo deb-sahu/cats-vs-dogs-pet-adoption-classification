@@ -1,0 +1,67 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+env/
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Data (large files)
+data/raw/
+data/processed/
+*.zip
+*.tar.gz
+
+# MLflow (artifacts stored separately)
+mlruns/
+mlartifacts/
+
+# DVC
+.dvc/cache/
+
+# Tests
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Development files
+Makefile
+docker-compose*.yml
+*.yaml
+!k8s/
+
+# Jupyter
+*.ipynb
+.ipynb_checkpoints/
+
+# Logs
+*.log
+logs/
+
+# Artifacts (training outputs)
+artifacts/
+
+# Mac
+.DS_Store

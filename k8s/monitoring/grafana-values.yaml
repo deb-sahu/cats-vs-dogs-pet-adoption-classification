@@ -1,0 +1,42 @@
+# Grafana Helm values for Minikube deployment
+
+persistence:
+  enabled: false
+
+adminPassword: admin123
+
+service:
+  type: NodePort
+  nodePort: 30030
+
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        url: http://prometheus-server.monitoring.svc.cluster.local
+        access: proxy
+        isDefault: true
+
+dashboardProviders:
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+      - name: "default"
+        orgId: 1
+        folder: ""
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/default
+
+dashboardsConfigMaps:
+  default: catdog-classifier-dashboard
+
+# Environment variables
+env:
+  GF_USERS_ALLOW_SIGN_UP: "false"
+  GF_AUTH_ANONYMOUS_ENABLED: "true"
+  GF_AUTH_ANONYMOUS_ORG_ROLE: "Viewer"

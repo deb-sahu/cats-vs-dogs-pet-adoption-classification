@@ -1,0 +1,140 @@
+name: CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deployment environment"
+        required: true
+        default: "staging"
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  deploy:
+    name: Deploy to Kubernetes
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: "v1.28.0"
+
+      - name: Configure kubectl
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
+        if: ${{ secrets.KUBECONFIG != '' }}
+
+      - name: Update deployment image
+        run: |
+          # Update the image tag in deployment
+          sed -i "s|image: catdog-classifier:latest|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}|g" k8s/deployment.yaml
+
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl apply -f k8s/namespace.yaml
+          kubectl apply -f k8s/configmap.yaml
+          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml
+        if: ${{ secrets.KUBECONFIG != '' }}
+
+      - name: Wait for deployment
+        run: |
+          kubectl -n catdog-classifier rollout status deployment/catdog-classifier --timeout=300s
+        if: ${{ secrets.KUBECONFIG != '' }}
+
+      - name: Run smoke tests
+        run: |
+          # Get service URL (for Minikube this would be different)
+          SERVICE_URL=$(kubectl -n catdog-classifier get svc catdog-classifier-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}'):80
+          
+          # If no LoadBalancer IP, use port-forward for testing
+          if [ -z "$SERVICE_URL" ] || [ "$SERVICE_URL" = ":80" ]; then
+            echo "Using port-forward for smoke tests..."
+            kubectl -n catdog-classifier port-forward svc/catdog-classifier-service 8080:80 &
+            PF_PID=$!
+            sleep 5
+            SERVICE_URL="localhost:8080"
+          fi
+          
+          # Run smoke tests
+          python scripts/smoke_test.py --url "http://${SERVICE_URL}"
+          
+          # Cleanup port-forward if used
+          if [ ! -z "$PF_PID" ]; then
+            kill $PF_PID 2>/dev/null || true
+          fi
+        if: ${{ secrets.KUBECONFIG != '' }}
+
+      - name: Output deployment info
+        run: |
+          echo "Deployment completed successfully!"
+          echo "Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+          echo "Environment: ${{ github.event.inputs.environment || 'staging' }}"
+
+  smoke-test-local:
+    name: Smoke Test (Local Docker)
+    runs-on: ubuntu-latest
+    if: ${{ secrets.KUBECONFIG == '' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install requests pillow numpy
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull and run Docker image
+        run: |
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker run -d --name catdog-api -p 8000:8000 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          sleep 15
+
+      - name: Run smoke tests
+        run: python scripts/smoke_test.py --url "http://localhost:8000"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker logs catdog-api || true
+          docker stop catdog-api || true
+          docker rm catdog-api || true
+
+  notify:
+    name: Notify on Deployment
+    runs-on: ubuntu-latest
+    needs: [deploy, smoke-test-local]
+    if: always()
+    steps:
+      - name: Check deployment status
+        run: |
+          if [ "${{ needs.deploy.result }}" == "success" ] || [ "${{ needs.smoke-test-local.result }}" == "success" ]; then
+            echo "Deployment successful!"
+          else
+            echo "Deployment failed or skipped"
+            exit 1
+          fi
