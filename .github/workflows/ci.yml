@@ -113,25 +113,19 @@ jobs:
           mkdir -p models
           touch models/.gitkeep
 
-      - name: Build Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: false
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          load: true
+      - name: Build Docker image for testing
+        run: |
+          docker build -t catdog-classifier:test .
 
       - name: Test Docker image
         run: |
-          docker run -d --name test-container -p 8000:8000 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-          sleep 10
+          docker run -d --name test-container -p 8000:8000 catdog-classifier:test
+          sleep 15
           curl -f http://localhost:8000/health || (docker logs test-container && exit 1)
           docker stop test-container
+          docker rm test-container
 
-      - name: Push Docker image
+      - name: Build and push Docker image
         if: github.event_name != 'pull_request'
         uses: docker/build-push-action@v5
         with:
