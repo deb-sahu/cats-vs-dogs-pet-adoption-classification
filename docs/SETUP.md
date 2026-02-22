@@ -42,21 +42,32 @@ pip install -r requirements-dev.txt
 
 ## 2. Data Preparation
 
-### Option A: Download from Kaggle (Full Dataset)
+### Option A: Create Sample Dataset (Recommended for Quick Testing)
 
-Requires Kaggle API credentials in `~/.kaggle/kaggle.json`:
-
-```bash
-python -m src.data.download
-```
-
-### Option B: Create Sample Dataset (Quick Testing)
+This creates synthetic images for testing the pipeline without downloading the full dataset:
 
 ```bash
 python -m src.data.download --sample --n-samples 100
 ```
 
-This creates synthetic images for testing the pipeline without downloading the full dataset.
+### Option B: Download from Kaggle (Full Dataset)
+
+To use the full Kaggle dataset, you need to:
+
+1. Install the kaggle package:
+```bash
+pip install kaggle
+```
+
+2. Set up Kaggle API credentials:
+   - Go to https://www.kaggle.com/settings → API → Create New Token
+   - Save `kaggle.json` to `~/.kaggle/kaggle.json`
+   - Set permissions: `chmod 600 ~/.kaggle/kaggle.json`
+
+3. Download and organize the dataset:
+```bash
+python -m src.data.download
+```
 
 ---
 
