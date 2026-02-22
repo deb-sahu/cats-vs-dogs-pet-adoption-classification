@@ -1,7 +1,6 @@
 # Cats vs Dogs Classifier - MLOps Project
 
-[![CI Pipeline](https://github.com/deb-sahu/mlops2/actions/workflows/ci.yml/badge.svg)](https://github.com/deb-sahu/mlops2/actions/workflows/ci.yml)
-[![CD Pipeline](https://github.com/deb-sahu/mlops2/actions/workflows/cd.yml/badge.svg)](https://github.com/deb-sahu/mlops2/actions/workflows/cd.yml)
+[![CI/CD Pipeline](https://github.com/deb-sahu/mlops2/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/deb-sahu/mlops2/actions/workflows/ci-cd.yml)
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -76,8 +75,7 @@ Build a machine learning classifier to identify cats vs dogs from images, and de
 mlops2/
 ├── .github/
 │   └── workflows/
-│       ├── ci.yml                 # CI: lint, test, build, push
-│       └── cd.yml                 # CD: deploy to K8s, smoke tests
+│       └── ci-cd.yml              # CI/CD: lint, test, train, build, deploy
 ├── data/
 │   ├── raw/                       # Original dataset (DVC tracked)
 │   └── processed/                 # Preprocessed images
@@ -407,18 +405,16 @@ kubectl -n monitoring port-forward svc/grafana 3000:80 &
 
 ## 🔄 CI/CD Pipeline
 
-### GitHub Actions Workflows
+### GitHub Actions Workflow (ci-cd.yml)
 
-**CI Pipeline (ci.yml):**
-1. Lint (flake8, black, isort)
-2. Test (pytest with coverage)
-3. Build Docker image
-4. Push to GitHub Container Registry
-
-**CD Pipeline (cd.yml):**
-1. Deploy to Kubernetes
-2. Run smoke tests
-3. Notify on completion
+| Stage | Description |
+|-------|-------------|
+| **Lint** | Code quality checks (flake8, black, isort) |
+| **Test** | Unit tests with pytest and coverage |
+| **Train** | Model training with sample data |
+| **Docker Build** | Build and test Docker image |
+| **Integration Test** | End-to-end API testing |
+| **Push Image** | Push to GitHub Container Registry (main branch only) |
 
 ### Triggers
 
