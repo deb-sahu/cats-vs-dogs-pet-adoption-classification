@@ -1,45 +1,47 @@
 # Cats vs Dogs Classifier - MLOps Project
 
-![CI/CD Pipeline](https://github.com/YOUR_USERNAME/mlops2/actions/workflows/ci.yml/badge.svg)
-![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)
-![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+[![CI Pipeline](https://github.com/deb-sahu/mlops2/actions/workflows/ci.yml/badge.svg)](https://github.com/deb-sahu/mlops2/actions/workflows/ci.yml)
+[![CD Pipeline](https://github.com/deb-sahu/mlops2/actions/workflows/cd.yml/badge.svg)](https://github.com/deb-sahu/mlops2/actions/workflows/cd.yml)
+[![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A production-ready MLOps pipeline for binary image classification (Cats vs Dogs) using PyTorch, MLflow, FastAPI, Docker, GitHub Actions, Kubernetes (Minikube), and Prometheus/Grafana monitoring.
 
 ---
 
-> ### For Evaluators/Instructors
+> ### 📖 **For Evaluators/Instructors**
 >
 > | Document | Description |
 > |----------|-------------|
-> | **[Local Setup Guide](docs/SETUP.md)** | Step-by-step instructions to run everything locally |
-> | **[Architecture](docs/ARCHITECTURE.md)** | System architecture and data flow diagrams |
-> | **[Deployment Guide](docs/DEPLOYMENT_GUIDE.md)** | Kubernetes & monitoring deployment details |
+> | **➡️ [Local Setup Guide](docs/SETUP.md)** | Step-by-step instructions to run everything locally |
+> | **📄 [Final Report](Final%20Report.docx)** | Assignment report with screenshots |
 >
 > The setup guide covers: Model training, API testing, Kubernetes deployment, and Prometheus + Grafana monitoring.
 
 ---
 
-## Table of Contents
+## 📋 Table of Contents
 
-- [Overview](#overview)
-- [Features](#features)
-- [Project Structure](#project-structure)
-- [Quick Start](#quick-start)
-- [Installation](#installation)
-- [Usage](#usage)
-- [API Documentation](#api-documentation)
-- [MLflow Experiment Tracking](#mlflow-experiment-tracking)
-- [Docker Deployment](#docker-deployment)
-- [Kubernetes Deployment](#kubernetes-deployment)
-- [Monitoring](#monitoring)
-- [CI/CD Pipeline](#cicd-pipeline)
-- [Testing](#testing)
-- [Model Information](#model-information)
+- [**Setup Guide**](docs/SETUP.md) ⭐
+- [Overview](#-overview)
+- [Features](#-features)
+- [Project Structure](#-project-structure)
+- [Quick Start](#-quick-start)
+- [Installation](#-installation)
+- [Usage](#-usage)
+- [API Documentation](#-api-documentation)
+- [MLflow Experiment Tracking](#-mlflow-experiment-tracking)
+- [Docker Deployment](#-docker-deployment)
+- [Kubernetes Deployment](#-kubernetes-deployment-minikube)
+- [Monitoring](#-monitoring-with-prometheus--grafana)
+- [CI/CD Pipeline](#-cicd-pipeline)
+- [Testing](#-testing)
+- [Model Information](#-model-information)
+- [Architecture](#-architecture)
 
 ---
 
-## Overview
+## 🎯 Overview
 
 This project implements an end-to-end MLOps pipeline for classifying images of cats and dogs, designed for a pet adoption platform.
 
@@ -56,7 +58,7 @@ Build a machine learning classifier to identify cats vs dogs from images, and de
 
 ---
 
-## Features
+## ✨ Features
 
 - **Data Pipeline**: Automated dataset download, preprocessing, and versioning with DVC
 - **Model Training**: PyTorch CNN with MLflow experiment tracking
@@ -68,7 +70,7 @@ Build a machine learning classifier to identify cats vs dogs from images, and de
 
 ---
 
-## Project Structure
+## 📁 Project Structure
 
 ```
 mlops2/
@@ -124,7 +126,7 @@ mlops2/
 
 ---
 
-## Quick Start
+## 🚀 Quick Start
 
 ### Prerequisites
 
@@ -181,7 +183,7 @@ docker-compose up
 
 ---
 
-## Installation
+## 📦 Installation
 
 ### Using pip
 
@@ -213,7 +215,7 @@ make install-dev   # Development dependencies
 
 ---
 
-## Usage
+## 🔧 Usage
 
 ### Training Models
 
@@ -255,7 +257,7 @@ curl -X POST http://localhost:8000/predict \
 
 ---
 
-## API Documentation
+## 📡 API Documentation
 
 ### Endpoints
 
@@ -288,7 +290,7 @@ Once the API is running:
 
 ---
 
-## MLflow Experiment Tracking
+## 📊 MLflow Experiment Tracking
 
 ### Starting MLflow UI
 
@@ -312,7 +314,7 @@ Visit http://localhost:5000 to view experiments.
 
 ---
 
-## Docker Deployment
+## 🐳 Docker Deployment
 
 ### Build and Run
 
@@ -343,9 +345,9 @@ docker-compose up -d
 
 ---
 
-## Kubernetes Deployment
+## ☸️ Kubernetes Deployment (Minikube)
 
-### Minikube Quick Start
+### Quick Start with Minikube
 
 ```bash
 # Start Minikube
@@ -376,7 +378,7 @@ curl http://localhost:8080/metrics
 
 ---
 
-## Monitoring
+## 📊 Monitoring with Prometheus & Grafana
 
 ### Install Prometheus & Grafana
 
@@ -403,7 +405,7 @@ kubectl -n monitoring port-forward svc/grafana 3000:80 &
 
 ---
 
-## CI/CD Pipeline
+## 🔄 CI/CD Pipeline
 
 ### GitHub Actions Workflows
 
@@ -426,7 +428,7 @@ kubectl -n monitoring port-forward svc/grafana 3000:80 &
 
 ---
 
-## Testing
+## 🧪 Testing
 
 ### Run All Tests
 
@@ -445,7 +447,7 @@ pytest tests/ -v --cov=src --cov-report=html
 
 ---
 
-## Model Information
+## 🤖 Model Information
 
 ### Architecture
 
@@ -470,6 +472,80 @@ pytest tests/ -v --cov=src --cov-report=html
 
 ---
 
-## License
+---
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        CI/CD Pipeline                           │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────────────────┐ │
+│  │  Lint   │→ │  Test   │→ │  Build  │→ │  Push to GHCR       │ │
+│  └─────────┘  └─────────┘  └─────────┘  └─────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     Training Pipeline                            │
+│  ┌──────────────┐   ┌──────────────┐   ┌──────────────────────┐ │
+│  │ Data Loader  │ → │ Preprocessor │ → │ CNN Training         │ │
+│  │ (Kaggle)     │   │ (PyTorch)    │   │ (MLflow Tracking)    │ │
+│  └──────────────┘   └──────────────┘   └──────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      Serving Layer                               │
+│  ┌──────────────────┐   ┌──────────────┐   ┌─────────────────┐  │
+│  │ FastAPI Endpoint │ ← │ Model Loader │ ← │ Saved Model     │  │
+│  │ /predict         │   │              │   │ (model.pt)      │  │
+│  └──────────────────┘   └──────────────┘   └─────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                 Kubernetes Deployment (Minikube)                 │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │ Namespace: catdog-classifier                                │ │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌────────────────────┐  │ │
+│  │  │ Deployment  │→ │   Service   │→ │  HPA (Auto-scale)  │  │ │
+│  │  │ (2 replicas)│  │ (NodePort)  │  │  (2-5 replicas)    │  │ │
+│  │  └─────────────┘  └─────────────┘  └────────────────────┘  │ │
+│  └────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                   Monitoring Stack (Helm)                        │
+│  ┌──────────────────┐              ┌──────────────────────────┐ │
+│  │ Prometheus       │  ──scrape──▶ │ /metrics endpoint        │ │
+│  │ (metrics store)  │              │ (prediction_requests,    │ │
+│  └────────┬─────────┘              │  latency, confidence)    │ │
+│           │                        └──────────────────────────┘ │
+│           ▼                                                      │
+│  ┌──────────────────┐                                           │
+│  │ Grafana          │                                           │
+│  │ (dashboards)     │                                           │
+│  └──────────────────┘                                           │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+For detailed architecture documentation, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+---
+
+## 📚 Documentation
+
+| Document | Description |
+|----------|-------------|
+| ⭐ **[docs/SETUP.md](docs/SETUP.md)** | **Complete local setup guide (start here!)** |
+| 📄 **[Final Report.docx](Final%20Report.docx)** | **Assignment report with screenshots** |
+| [README.md](README.md) | Project overview |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System architecture diagrams |
+| [docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md) | Kubernetes & monitoring details |
+
+---
+
+## 📄 License
 
 This project is licensed under the MIT License.
