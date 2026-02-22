@@ -34,6 +34,8 @@ RUN pip install --no-cache-dir /wheels/* && rm -rf /wheels
 
 # Copy application code
 COPY src/ ./src/
+
+# Copy models if they exist (use .dockerignore to control)
 COPY models/ ./models/
 
 # Create directories for runtime
