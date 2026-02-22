@@ -39,6 +39,7 @@ ENV/
 # MLflow
 mlruns/
 mlartifacts/
+mlflow.db
 
 # DVC
 /data/raw/*

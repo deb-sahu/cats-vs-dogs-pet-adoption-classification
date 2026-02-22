@@ -126,6 +126,7 @@ jobs:
       - name: Create necessary directories
         run: |
           mkdir -p data/processed models artifacts mlruns
+          rm -f mlflow.db  # Remove any cached MLflow database
 
       - name: Create sample data and train model
         run: |
@@ -133,6 +134,7 @@ jobs:
           python scripts/train.py --epochs 2 --batch-size 8
         env:
           PYTHONPATH: ${{ github.workspace }}
+          MLFLOW_TRACKING_URI: sqlite:///mlflow.db
 
       - name: Verify model artifacts
         run: |

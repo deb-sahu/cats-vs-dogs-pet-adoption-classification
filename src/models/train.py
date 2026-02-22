@@ -71,6 +71,7 @@ class Trainer:
             self.optimizer, mode="min", patience=3, factor=0.5
         )
 
+        mlflow.set_tracking_uri("sqlite:///mlflow.db")
         mlflow.set_experiment(experiment_name)
 
         self.train_losses: List[float] = []
