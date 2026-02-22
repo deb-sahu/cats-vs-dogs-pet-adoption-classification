@@ -1,353 +1,424 @@
-# Deployment Guide
+# Deployment & Monitoring Guide
 
-This guide covers deploying the Cats vs Dogs classifier to various environments.
+This guide covers deploying the Cats vs Dogs Classifier API to local Kubernetes and setting up monitoring with Prometheus and Grafana.
 
 ---
 
 ## Table of Contents
 
-1. [Docker Deployment](#docker-deployment)
-2. [Kubernetes Deployment (Minikube)](#kubernetes-deployment-minikube)
-3. [Monitoring Setup](#monitoring-setup)
-4. [Production Considerations](#production-considerations)
+1. [Prerequisites](#1-prerequisites)
+2. [Local Kubernetes Deployment](#2-local-kubernetes-deployment)
+3. [Prometheus & Grafana Setup](#3-prometheus--grafana-setup)
+4. [Prometheus Metrics](#4-prometheus-metrics)
+5. [Creating Dashboards](#5-creating-dashboards)
+6. [Troubleshooting](#6-troubleshooting)
 
 ---
 
-## Docker Deployment
+## 1. Prerequisites
 
-### Building the Image
+### Required Software
 
-```bash
-# Standard build
-docker build -t catdog-classifier:latest .
+| Tool | Purpose | Installation |
+|------|---------|--------------|
+| Docker | Container runtime | [Install Docker](https://docs.docker.com/get-docker/) |
+| kubectl | Kubernetes CLI | [Install kubectl](https://kubernetes.io/docs/tasks/tools/) |
+| Minikube OR Docker Desktop | Local Kubernetes | See below |
+| Helm | Kubernetes package manager | `brew install helm` |
 
-# With build arguments
-docker build \
-  --build-arg PYTHON_VERSION=3.11 \
-  -t catdog-classifier:latest .
-
-# Multi-platform build
-docker buildx build \
-  --platform linux/amd64,linux/arm64 \
-  -t catdog-classifier:latest .
-```
-
-### Running the Container
+### Option A: Minikube (Recommended for Learning)
 
 ```bash
-# Basic run
-docker run -d -p 8000:8000 --name catdog-api catdog-classifier:latest
+# macOS
+brew install minikube
 
-# With model volume mount
-docker run -d -p 8000:8000 \
-  -v $(pwd)/models:/app/models:ro \
-  --name catdog-api \
-  catdog-classifier:latest
+# Linux
+curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+sudo install minikube-linux-amd64 /usr/local/bin/minikube
 
-# With environment variables
-docker run -d -p 8000:8000 \
-  -e MODEL_PATH=/app/models/model.pt \
-  -e LOG_LEVEL=DEBUG \
-  --name catdog-api \
-  catdog-classifier:latest
+# Windows (PowerShell as Admin)
+choco install minikube
 ```
 
-### Docker Compose
+### Option B: Docker Desktop Kubernetes
 
-For local development with full stack:
-
-```bash
-# Start all services
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Scale API
-docker-compose up -d --scale api=3
-
-# Cleanup
-docker-compose down -v
-```
-
-**Services in docker-compose.yml:**
-| Service | Port | Description |
-|---------|------|-------------|
-| api | 8000 | FastAPI application |
-| mlflow | 5000 | Experiment tracking UI |
-| prometheus | 9090 | Metrics collection |
-| grafana | 3000 | Dashboards |
+1. Open Docker Desktop
+2. Go to Settings → Kubernetes
+3. Check "Enable Kubernetes"
+4. Click "Apply & Restart"
 
 ---
 
-## Kubernetes Deployment (Minikube)
+## 2. Local Kubernetes Deployment
 
-### Prerequisites
+### Quick Deploy (Automated)
 
 ```bash
-# Install Minikube (macOS)
-brew install minikube kubectl helm
+# Make the script executable
+chmod +x scripts/deploy_k8s.sh
 
-# Start Minikube
-minikube start --memory=4096 --cpus=2
+# Deploy to Minikube
+./scripts/deploy_k8s.sh minikube
+
+# OR deploy to Docker Desktop
+./scripts/deploy_k8s.sh docker-desktop
+```
+
+### Manual Deployment Steps
+
+#### Step 1: Start Kubernetes Cluster
+
+**Minikube:**
+```bash
+# Start with adequate resources
+minikube start --driver=docker --memory=4096 --cpus=2
 
 # Enable addons
 minikube addons enable metrics-server
 minikube addons enable ingress
+
+# Use Minikube's Docker daemon (so images are accessible)
+eval $(minikube docker-env)
 ```
 
-### Build Image in Minikube
+**Docker Desktop:**
+```bash
+# Verify Kubernetes is running
+kubectl cluster-info
+```
+
+#### Step 2: Build Docker Image
 
 ```bash
-# Point Docker to Minikube's daemon
-eval $(minikube docker-env)
-
-# Build image
+# Build the image (use minikube's Docker daemon)
 docker build -t catdog-classifier:latest .
 
-# Verify
-docker images | grep catdog
+# Verify image was created
+docker images | grep catdog-classifier
 ```
 
-### Deploy Application
+> **Important**: Make sure to run `eval $(minikube docker-env)` before building so the image is available in minikube's Docker registry.
+
+#### Step 3: Deploy to Kubernetes
 
 ```bash
-# Create namespace
+# Apply all Kubernetes manifests
 kubectl apply -f k8s/namespace.yaml
-
-# Deploy configuration
 kubectl apply -f k8s/configmap.yaml
-
-# Deploy application
 kubectl apply -f k8s/deployment.yaml
 kubectl apply -f k8s/service.yaml
-
-# Optional: Enable autoscaling
 kubectl apply -f k8s/hpa.yaml
 ```
 
-### Verify Deployment
+#### Step 4: Verify Deployment
 
 ```bash
-# Check pods
-kubectl -n catdog-classifier get pods
+# Check pods are running
+kubectl get pods -n catdog-classifier
 
-# Check service
-kubectl -n catdog-classifier get svc
+# Expected output:
+# NAME                                 READY   STATUS    RESTARTS   AGE
+# catdog-classifier-xxxxxxxxxx-xxxxx   1/1     Running   0          1m
+# catdog-classifier-xxxxxxxxxx-xxxxx   1/1     Running   0          1m
 
-# View logs
-kubectl -n catdog-classifier logs -l app=catdog-classifier -f
+# Check services
+kubectl get svc -n catdog-classifier
 
-# Describe deployment
-kubectl -n catdog-classifier describe deployment catdog-classifier
+# Check deployment status
+kubectl describe deployment catdog-classifier -n catdog-classifier
 ```
 
-### Access the API
+#### Step 5: Access the API
+
+**Minikube:**
+```bash
+# Get service URL
+minikube service catdog-classifier-service -n catdog-classifier --url
+
+# OR use port-forward
+kubectl port-forward svc/catdog-classifier-service 8080:80 -n catdog-classifier
+
+# Access at http://localhost:8080
+```
+
+**Docker Desktop:**
+```bash
+# Use port-forward
+kubectl port-forward svc/catdog-classifier-service 8080:80 -n catdog-classifier
+
+# Access at http://localhost:8080
+```
+
+#### Step 6: Test the API
+
+**Available Endpoints:**
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health check - returns model status |
+| `/predict` | POST | Make cat/dog prediction (upload image) |
+| `/metrics` | GET | Prometheus metrics for monitoring |
+| `/docs` | GET | Interactive Swagger UI documentation |
+| `/model/info` | GET | Model information |
+
+**Test Commands:**
 
 ```bash
-# Option 1: Port forward
-kubectl -n catdog-classifier port-forward svc/catdog-classifier-service 8080:80
+# 1. Health check
+curl http://localhost:8080/health
+# Response: {"status":"healthy","model_loaded":true,"version":"1.0.0"}
 
-# Option 2: Minikube service
-minikube -n catdog-classifier service catdog-classifier-service
+# 2. Make a prediction (upload an image)
+curl -X POST http://localhost:8080/predict \
+  -F "file=@path/to/cat_or_dog.jpg"
+# Response: {"prediction":0,"label":"cat","confidence":0.85,"probability_cat":0.85,"probability_dog":0.15}
 
-# Option 3: NodePort (if configured)
-minikube ip  # Get Minikube IP
-# Access at http://<minikube-ip>:30080
+# 3. Check Prometheus metrics
+curl http://localhost:8080/metrics | grep prediction
+# Shows: prediction_requests_total, prediction_latency_seconds
+
+# 4. Get model info
+curl http://localhost:8080/model/info
+
+# 5. Open Swagger UI in browser
+open http://localhost:8080/docs
 ```
-
-### Kubernetes Manifests Explained
-
-**deployment.yaml:**
-- 2 replicas for high availability
-- Resource limits (512Mi memory, 500m CPU)
-- Liveness/readiness probes on /health
-- Rolling update strategy
-
-**service.yaml:**
-- NodePort type for Minikube access
-- Exposes port 80 → container port 8000
-
-**hpa.yaml:**
-- Scales 2-5 replicas based on CPU/memory
-- Target 70% CPU utilization
 
 ---
 
-## Monitoring Setup
+## 3. Prometheus & Grafana Setup
 
-### Install Prometheus & Grafana
+We deploy Prometheus and Grafana locally in Minikube using Helm charts. This provides a **completely free** monitoring solution.
+
+### Quick Setup (Automated)
 
 ```bash
 # Run the setup script
 ./scripts/setup_monitoring.sh
+```
 
-# Or manually:
+### Manual Setup Steps
+
+#### Step 1: Add Helm Repositories
+
+```bash
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo add grafana https://grafana.github.io/helm-charts
 helm repo update
+```
 
-# Install Prometheus
+#### Step 2: Deploy Prometheus
+
+```bash
 helm install prometheus prometheus-community/prometheus \
   --namespace monitoring \
   --create-namespace \
   -f k8s/monitoring/prometheus-values.yaml
+```
 
-# Install Grafana
+#### Step 3: Deploy Grafana
+
+```bash
 helm install grafana grafana/grafana \
   --namespace monitoring \
+  --set persistence.enabled=false \
   --set adminPassword=admin123 \
   -f k8s/monitoring/grafana-values.yaml
 ```
 
-### Access Monitoring
+#### Step 4: Wait for Pods
 
 ```bash
-# Prometheus
+kubectl -n monitoring wait --for=condition=ready pod --all --timeout=120s
+kubectl -n monitoring get pods
+```
+
+Expected output:
+```
+NAME                                            READY   STATUS    RESTARTS   AGE
+grafana-xxxxxxxxxx-xxxxx                        1/1     Running   0          1m
+prometheus-server-xxxxxxxxxx-xxxxx              2/2     Running   0          1m
+```
+
+#### Step 5: Access the Services
+
+```bash
+# Port forward Prometheus (in background)
 kubectl -n monitoring port-forward svc/prometheus-server 9090:80 &
 
-# Grafana
+# Port forward Grafana (in background)
 kubectl -n monitoring port-forward svc/grafana 3000:80 &
 ```
 
-### Configure Grafana
+**Access URLs:**
+
+| Service | URL | Credentials |
+|---------|-----|-------------|
+| Prometheus | http://localhost:9090 | - |
+| Grafana | http://localhost:3000 | `admin` / `admin123` |
+
+#### Step 6: Configure Grafana Data Source
 
 1. Open http://localhost:3000
-2. Login with admin / admin123
-3. Add data source:
-   - Type: Prometheus
-   - URL: http://prometheus-server.monitoring.svc.cluster.local
-4. Import dashboard:
-   - Upload `k8s/monitoring/grafana-dashboard.json`
+2. Login with `admin` / `admin123`
+3. Go to **Connections** → **Data Sources** → **Add data source**
+4. Select **Prometheus**
+5. Set URL to: `http://prometheus-server.monitoring.svc.cluster.local`
+6. Click **Save & Test**
 
-### Available Metrics
+#### Step 7: Import Dashboard
+
+1. Go to **Dashboards** → **Import**
+2. Upload `k8s/monitoring/grafana-dashboard.json`
+3. Select your Prometheus data source
+4. Click **Import**
+
+---
+
+## 4. Prometheus Metrics
+
+The API exposes custom metrics at `/metrics`:
+
+### Prediction Metrics
 
 | Metric | Type | Description |
 |--------|------|-------------|
 | `prediction_requests_total` | Counter | Total predictions by status/class |
-| `prediction_latency_seconds` | Histogram | Request latency percentiles |
-| `prediction_confidence` | Histogram | Model confidence distribution |
-| `model_loaded` | Gauge | 1 if model loaded, 0 otherwise |
+| `prediction_latency_seconds` | Histogram | Prediction request latency |
+| `prediction_confidence` | Histogram | Prediction confidence distribution |
+| `model_loaded` | Gauge | Whether model is loaded (1/0) |
 
 ### Example Prometheus Queries
 
 ```promql
-# Request rate (last 5 min)
-sum(rate(prediction_requests_total[5m]))
+# Prediction rate (per minute)
+rate(prediction_requests_total[1m])
 
 # P95 latency
-histogram_quantile(0.95, sum(rate(prediction_latency_seconds_bucket[5m])) by (le))
+histogram_quantile(0.95, rate(prediction_latency_seconds_bucket[5m]))
 
-# Error rate
-sum(rate(prediction_requests_total{status="error"}[5m])) / sum(rate(prediction_requests_total[5m]))
-
-# Predictions per class
+# Predictions by class
 sum(prediction_requests_total) by (prediction)
+
+# Model uptime
+model_loaded
 ```
 
 ---
 
-## Production Considerations
+## 5. Creating Dashboards
 
-### Security
+### Pre-built Dashboard
 
-1. **Use secrets for sensitive data:**
-   ```yaml
-   apiVersion: v1
-   kind: Secret
-   metadata:
-     name: api-secrets
-   data:
-     MODEL_PATH: <base64-encoded-path>
-   ```
+Import `k8s/monitoring/grafana-dashboard.json` which includes:
+- Predictions per minute (by class)
+- P95 latency gauge
+- Model status indicator
+- Error rate panel
 
-2. **Network policies:**
-   ```yaml
-   apiVersion: networking.k8s.io/v1
-   kind: NetworkPolicy
-   metadata:
-     name: api-network-policy
-   spec:
-     podSelector:
-       matchLabels:
-         app: catdog-classifier
-     ingress:
-       - from:
-           - namespaceSelector:
-               matchLabels:
-                 name: ingress
-   ```
+### Custom Panels
 
-3. **Pod security:**
-   ```yaml
-   securityContext:
-     runAsNonRoot: true
-     runAsUser: 1000
-     readOnlyRootFilesystem: true
-   ```
+**Predictions Over Time:**
+```promql
+sum(rate(prediction_requests_total[5m])) by (prediction)
+```
 
-### Scaling
-
-1. **Horizontal Pod Autoscaler** (included in k8s/hpa.yaml)
-2. **Cluster autoscaler** for node scaling
-3. **Consider GPU nodes** for inference optimization
-
-### Reliability
-
-1. **Pod Disruption Budget:**
-   ```yaml
-   apiVersion: policy/v1
-   kind: PodDisruptionBudget
-   spec:
-     minAvailable: 1
-     selector:
-       matchLabels:
-         app: catdog-classifier
-   ```
-
-2. **Resource quotas** per namespace
-3. **Health checks** with appropriate timeouts
-
-### Observability
-
-1. Enable structured JSON logging
-2. Use distributed tracing (Jaeger/Zipkin)
-3. Set up alerting in Grafana
-4. Implement SLOs/SLIs
+**Average Latency:**
+```promql
+histogram_quantile(0.95, rate(prediction_latency_seconds_bucket[5m]))
+```
 
 ---
 
-## Troubleshooting
+## 6. Troubleshooting
 
-### Pods Not Starting
+### Pod not starting
 
 ```bash
-# Check events
-kubectl -n catdog-classifier get events --sort-by=.metadata.creationTimestamp
-
 # Check pod status
-kubectl -n catdog-classifier describe pod <pod-name>
+kubectl describe pod -l app=catdog-classifier -n catdog-classifier
 
-# Check image pull
-kubectl -n catdog-classifier get pods -o jsonpath='{.items[*].status.containerStatuses[*].state}'
-```
-
-### Model Not Loading
-
-```bash
 # Check logs
-kubectl -n catdog-classifier logs -l app=catdog-classifier | grep -i model
-
-# Verify model path
-kubectl -n catdog-classifier exec -it <pod-name> -- ls -la /app/models/
+kubectl logs -l app=catdog-classifier -n catdog-classifier
 ```
 
-### High Latency
+### Image not found
 
 ```bash
-# Check resource usage
-kubectl -n catdog-classifier top pods
+# For Minikube, ensure you're using Minikube's Docker
+eval $(minikube docker-env)
+docker build -t catdog-classifier:latest .
 
-# Review Prometheus metrics
-curl http://localhost:9090/api/v1/query?query=histogram_quantile(0.99,prediction_latency_seconds_bucket)
+# Verify imagePullPolicy is "IfNotPresent" in deployment.yaml
 ```
+
+### Service not accessible
+
+```bash
+# Check service endpoints
+kubectl get endpoints -n catdog-classifier
+
+# Use port-forward as fallback
+kubectl port-forward svc/catdog-classifier-service 8080:80 -n catdog-classifier
+```
+
+### Metrics not appearing in Grafana
+
+```bash
+# Verify metrics endpoint works
+kubectl port-forward svc/catdog-classifier-service 8080:80 -n catdog-classifier
+curl http://localhost:8080/metrics
+
+# Check Prometheus targets
+curl http://localhost:9090/api/v1/targets | jq '.data.activeTargets[] | {job, health}'
+```
+
+### Cleanup
+
+```bash
+# Delete the application
+kubectl delete namespace catdog-classifier
+
+# Delete monitoring
+kubectl delete namespace monitoring
+
+# Stop Minikube
+minikube stop
+
+# Delete Minikube cluster completely
+minikube delete
+```
+
+---
+
+## Quick Reference
+
+### Commands
+
+```bash
+# Full deployment
+./scripts/deploy_k8s.sh minikube
+
+# Check status
+kubectl get all -n catdog-classifier
+
+# View logs
+kubectl logs -f deployment/catdog-classifier -n catdog-classifier
+
+# Scale
+kubectl scale deployment catdog-classifier --replicas=3 -n catdog-classifier
+
+# Delete
+kubectl delete namespace catdog-classifier
+```
+
+### URLs (after port-forward)
+
+| Service | URL |
+|---------|-----|
+| API | http://localhost:8080 |
+| Health Check | http://localhost:8080/health |
+| API Docs | http://localhost:8080/docs |
+| Metrics | http://localhost:8080/metrics |
+| Prometheus | http://localhost:9090 |
+| Grafana | http://localhost:3000 |

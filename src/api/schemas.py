@@ -1,12 +1,13 @@
 """Pydantic schemas for API request/response validation."""
 
 from typing import Optional
+
 from pydantic import BaseModel, Field
 
 
 class HealthResponse(BaseModel):
     """Health check response."""
-    
+
     status: str = Field(..., description="Service status", examples=["healthy"])
     model_loaded: bool = Field(..., description="Whether the model is loaded")
     version: str = Field(..., description="API version", examples=["1.0.0"])
@@ -14,7 +15,7 @@ class HealthResponse(BaseModel):
 
 class PredictionResponse(BaseModel):
     """Prediction response."""
-    
+
     prediction: int = Field(
         ...,
         description="Predicted class (0=cat, 1=dog)",
@@ -48,14 +49,14 @@ class PredictionResponse(BaseModel):
 
 class ErrorResponse(BaseModel):
     """Error response."""
-    
+
     error: str = Field(..., description="Error message")
     detail: Optional[str] = Field(None, description="Detailed error information")
 
 
 class ModelInfoResponse(BaseModel):
     """Model information response."""
-    
+
     model_type: str = Field(..., description="Model architecture type")
     input_size: list = Field(..., description="Expected input image size [H, W]")
     classes: list = Field(..., description="Class labels")
